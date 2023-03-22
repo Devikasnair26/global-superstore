@@ -1,0 +1,551 @@
+/* STEP 1 */
+
+USE GroupDW
+Go
+
+CREATE TABLE DIM_Customer (
+	Customer_WK 	int 		IDENTITY,
+	CustomerID	nchar(10)	NULL,
+	customer_name	nvarchar(80)	NOT NULL,
+	Segment	nvarchar(60)	NULL
+)
+
+GO
+
+CREATE UNIQUE INDEX IDX_DIM_CUSTOMER ON DIM_Customer
+	(
+		CustomerID
+	)
+Go
+
+ALTER TABLE DIM_Customer
+	ADD PRIMARY KEY (Customer_WK)
+Go
+
+
+CREATE TABLE DIM_Calendar (
+	calendar_wk 	int 		NOT NULL,
+	calendar_nk	datetime	NULL,
+	full_date 	nvarchar(20)	NULL,
+	day_of_week	tinyint		NULL,
+	day_of_month	tinyint		NULL,
+	day_of_year	smallint	NULL,
+	month_num	tinyint		NULL,
+	month_ldesc	nvarchar(9)	NULL,
+	month_sdesc	nchar(3)	NULL,
+	quarter_num	tinyint		NULL,
+	quarter_ldesc	nvarchar(10)	NULL,
+	quarter_sdesc	nvarchar(10)	NULL,
+	year_num	smallint	NULL,
+	year_sdesc	nchar(4)	NULL
+)
+
+Go
+
+CREATE UNIQUE INDEX IDX_DIM_CALENDAR ON DIM_Calendar
+	(
+		calendar_nk
+	)
+Go
+
+ALTER TABLE DIM_Calendar
+	ADD PRIMARY KEY (calendar_wk)
+Go
+
+
+CREATE TABLE DIM_Product (
+	Product_WK 		int 		IDENTITY,
+	Product_ID		nchar(30) 		NULL,
+	Product_Name		nvarchar(200)	NOT NULL,
+	Category	nvarchar(30)	NULL,
+	Sub_Category		nvarchar(30) NULL
+)
+
+GO
+
+CREATE UNIQUE INDEX IDX_DIM_PRODUCT ON DIM_Product
+	(
+		Product_ID,Product_Name,Category,Sub_Category
+	)
+Go
+
+ALTER TABLE DIM_Product
+	ADD PRIMARY KEY (Product_WK)
+Go
+
+
+USE GroupDW
+Go
+
+CREATE TABLE DIM_Orders (
+	Order_WK 		int 		IDENTITY,
+	Order_ID		nvarchar(30) 		NULL,
+	Ship_Mode		nvarchar(80)	NOT NULL,
+	Order_Priority	nvarchar(30)	NULL,
+	Ship_date		 date		NOT NULL,
+	Order_date	 	date		NOT NULL
+)
+
+GO
+
+CREATE UNIQUE INDEX IDX_DIM_ORDER ON DIM_Orders
+	(
+		Order_ID,Ship_Mode,Order_Priority,Ship_date,Order_date	
+
+	)
+Go
+
+ALTER TABLE DIM_Orders
+	ADD PRIMARY KEY (Order_WK)
+Go
+
+
+USE GroupDW
+Go
+
+CREATE TABLE FACT_Orders (
+	Order_WK 		int 		NULL,
+	Order_NK		nvarchar(255) 		NOT NULL,
+	Customer_WK		int 		NOT NULL,
+	Order_Date_WK		int 		NOT NULL,
+	Ship_Date_WK		int 		NOT NULL,
+	Location_WK	int 		NOT NULL,
+	Product_WK		int 		NOT NULL,	
+	Sales			money 		NOT NULL,
+	Quantity	smallint	NOT NULL,
+	Discount	int		NOT NULL,
+	Profit		  money	NULL,
+	Shipping_Cost		money 	NOT NULL,
+	Response	datetime	NULL
+)
+
+GO
+
+CREATE INDEX IDX_FACT_Orders ON FACT_Orders
+	(
+		Order_NK
+	)
+Go
+
+CREATE INDEX IDX_FACT_Orders_ORDER_DATE ON FACT_Orders
+	(
+		Order_Date_WK
+	)
+Go
+
+
+
+CREATE INDEX IDX_FACT_Orders_CUSTOMER ON FACT_Orders
+	(
+		Customer_WK
+	)
+Go
+
+
+CREATE INDEX IDX_FACT_Orders_SHIP_DATE ON FACT_Orders
+	(
+		Ship_Date_WK
+	)
+Go
+
+CREATE INDEX IDX_FACT_Orders_Location ON FACT_Orders
+	(
+		Location_WK
+	)
+Go
+
+
+CREATE INDEX IDX_FACT_Orders_Product ON FACT_Orders
+	(
+		Product_WK
+	)
+Go
+
+
+CREATE INDEX IDX_FACT_Orders_Order ON FACT_Orders
+	(
+		Order_WK
+	)
+Go
+
+
+
+USE GroupDW
+Go
+
+CREATE TABLE DIM_Location (
+	Loc_WK 		int 		IDENTITY,
+	Country			nvarchar(255)	NULL,
+	State		nvarchar(255)	NULL,
+	City			nvarchar(255)	NULL,
+)
+
+GO
+
+CREATE INDEX IDX_DIM_GEOGRAPHY_COUNTRY ON DIM_Location
+	(
+		Country
+	)
+Go
+
+CREATE INDEX IDX_DIM_GEOGRAPHY_STATE ON DIM_Location
+	(
+		State
+	)
+Go
+
+CREATE INDEX IDX_DIM_GEOGRAPHY_CCITY ON DIM_Location
+	(
+		City
+	)
+Go
+
+
+ALTER TABLE DIM_Location
+	ADD PRIMARY KEY (Loc_WK)
+Go
+
+USE  GroupDW
+Go
+Use GroupDW
+Go
+INSERT INTO DIM_CALENDAR
+	(calendar_wk, calendar_nk, full_date, month_ldesc, month_sdesc, quarter_ldesc, quarter_sdesc, year_sdesc)
+	VALUES
+	(0, NULL, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A')
+
+
+declare @dtStartDate datetime
+declare @dtEndDate datetime
+declare @dtCurrDate datetime
+
+SELECT @dtStartDate = '1/1/2011'
+SELECT @dtEndDate = '12/3/2015'
+
+SELECT @dtCurrDate = DATEADD(d,1, MAX(calendar_nk))
+FROM DIM_CALENDAR
+WHERE calendar_nk IS NOT NULL
+
+SELECT @dtCurrDate = ISNULL(@dtCurrDate, @dtStartDate)
+
+WHILE @dtCurrDate <= @dtEndDate
+BEGIN
+
+INSERT INTO DIM_CALENDAR
+	(
+	calendar_wk, 
+	calendar_nk, 
+	full_date, 
+	day_of_week,
+	day_of_month,
+	day_of_year,
+	month_num,
+	month_ldesc, 
+	month_sdesc, 
+	quarter_num, 
+	quarter_ldesc, 
+	quarter_sdesc, 
+	year_num,
+	year_sdesc)
+	
+VALUES
+
+	(
+	CONVERT(int, CONVERT(char(8), @dtCurrDate, 112)),
+	@dtCurrDate,
+	DATENAME(month, @dtCurrDate) + ' ' + CONVERT(nvarchar(2), DAY(@dtCurrDate)) + ', ' +  CONVERT(char(4), YEAR(@dtCurrDate)),
+	DATEPART(dw, @dtCurrDate),
+	DATEPART(d, @dtCurrDate),
+	DATEPART(dy, @dtCurrDate),
+	DATEPART(m, @dtCurrDate),
+	SUBSTRING (DATENAME(m, @dtCurrDate),1,3) + ' ' + CONVERT(char(4), YEAR(@dtCurrDate)),
+	SUBSTRING (DATENAME(m, @dtCurrDate),1,3),
+	DATEPART(qq, @dtCurrDate), 
+	'Q' + CONVERT(char(1), DATEPART(qq,@dtCurrDate))+ ' ' + CONVERT(char(4), YEAR(@dtCurrDate)),
+	'Q' + CONVERT(char(1), DATEPART(qq,@dtCurrDate)),
+	YEAR(@dtCurrDate), 
+	CONVERT(char(4), YEAR(@dtCurrDate))
+	)
+
+SELECT @dtCurrDate  = DATEADD(d,1,@dtCurrDate)
+END
+
+/*Creating stage_orders*/
+
+USE GroupDW
+
+Go 
+CREATE TABLE STAGE_Orders (
+	OrderID			nvarchar(255)		null,
+	OrderDate			datetime			null,
+	ShipDate			datetime			null,
+	ShipMode			nvarchar(255)		null,
+	CustomerID			nvarchar(255)		null,
+	CustomerName		nvarchar(255)		null,
+	Segment				nvarchar(255)		null,
+	City				nvarchar(255)		NULL,
+	State				nvarchar(255)		NULL,
+	Country				nvarchar(255)		NULL,
+	ProductID			nvarchar(255)		null,
+	Category			nvarchar(255)		null,
+	Sub_Category		nvarchar(255)		null,
+	ProductName		nvarchar(255)		null,
+	Sales				float				null,
+	Quantity			float				null,
+	Discount			float				null,
+	Profit				float				null,
+	ShippingCost		float				null,
+	OrderPriority		nvarchar(255)		null,
+	Record_Customer_Exists	Char(1)	Default 'N',
+	Record_Product_Exists	Char(1) Default 'N',
+	Record_Location_Exists	Char(1)	Default 'N',
+	Record_Orders_Exists	Char(1)	Default 'N',
+	Order_WK		int 		NULL,
+	Response       datetime   null,
+	Customer_WK		int		null,
+	Location_WK		int        null,
+	Product_WK 		int        null,
+	Order_Date_WK	int	null,
+	Ship_Date_WK	int	null
+)
+
+GO
+
+
+
+
+
+
+
+
+
+
+
+/* STEP 2 */
+
+
+USE GroupDW
+Go
+Truncate TABLE dbo.STAGE_Orders
+Use GroupDW
+Go
+
+
+SET ANSI_WARNINGS OFF
+Insert into dbo.STAGE_Orders(
+	OrderID,
+	OrderDate,
+	ShipDate,
+	ShipMode,
+	CustomerID,
+	CustomerName,
+	Segment, 
+	City, 
+	State, 
+	Country, 
+	ProductID,
+	Category,
+	Sub_category,
+	ProductName,
+	Sales,
+	Quantity,
+	Discount,
+	Profit,
+	ShippingCost,
+	OrderPriority,
+	Response
+)
+select 
+	e.[Order_ID] ,
+	e.[Order_Date] ,
+	e.[Ship_Date] ,
+	e.[Ship_Mode] ,
+	e.[Customer_ID],
+	e.[Customer_Name] ,
+	e.[Segment] ,
+	e.[City] ,
+	e.[State] ,
+	e.[Country] ,
+	e.[Product_ID] ,
+	e.[Category] ,
+	e.[Sub_Category] ,
+	e.[Product_Name] ,
+	e.[Sales] ,
+	e.[Quantity] ,
+	e.[Discount] ,
+	e.[Profit] ,
+	e.[Shipping_Cost] ,
+	e.[Order_Priority] ,
+	datediff(dd,e.[Order_Date],e.[Ship_Date])
+	
+	
+
+from GroupOP.dbo.Orders as e 
+where e.[Order_Date] between '01/01/2011' and '12/31/2011' 
+SET ANSI_WARNINGS ON
+
+
+
+UPDATE   STAGE_Orders
+SET   Order_Date_WK =calendar_WK
+FROM   STAGE_Orders S, DIM_Calendar C
+WHERE   S.OrderDate = C.Calendar_nk;
+
+UPDATE   STAGE_Orders
+SET   Ship_Date_WK = calendar_WK
+FROM   STAGE_Orders S, DIM_Calendar C
+WHERE   S.ShipDate = C.Calendar_nk;
+
+
+
+
+
+
+
+/* STEP 3 */
+
+
+/*INSERT INTO DIM_LOCATION*/
+USE GroupDW
+Go
+
+SET IDENTITY_INSERT DIM_Location OFF
+
+INSERT INTO DIM_Location
+	( City,Country,State )
+
+select Distinct City, Country,State
+From STAGE_Orders
+where Record_Location_Exists = 'N'
+
+
+
+/*INSERT INTO DIM_CUSTOMER*/
+USE GroupDW
+Go
+
+SET IDENTITY_INSERT DIM_Customer OFF
+
+INSERT INTO DIM_Customer
+	( CustomerID,Customer_Name,Segment)
+
+select Distinct CustomerID,CustomerName,Segment
+From STAGE_Orders
+where Record_Customer_Exists = 'N'
+
+
+
+/*INSERT INTO DIM_ORDER*/
+USE GroupDW
+Go
+
+SET IDENTITY_INSERT DIM_Orders OFF
+
+INSERT INTO DIM_Orders
+	( Order_ID,Order_Priority,Ship_Mode,Ship_date,Order_date)
+
+select Distinct OrderID,OrderPriority,ShipMode,ShipDate,OrderDate
+From STAGE_ORDERS
+where Record_Orders_Exists = 'N'
+
+
+/*INSERT INTO DIM_PRODUCT*/
+USE GroupDW
+Go
+
+SET IDENTITY_INSERT DIM_PRODUCT OFF
+
+INSERT INTO DIM_PRODUCT
+	( Product_ID,Product_name,Category,Sub_Category)
+
+select Distinct ProductID,ProductName,Category,Sub_Category
+From STAGE_ORDERS
+where Record_Product_Exists = 'N'
+
+
+
+
+/*Alter Table 1*/
+
+UPDATE    STAGE_Orders
+SET      Customer_WK  = C.Customer_WK
+FROM 
+STAGE_ORDERS S,  DIM_CUSTOMER C
+
+WHERE S.CustomerID = C.CustomerID
+
+
+UPDATE    STAGE_Orders
+SET      Location_WK  = L.Loc_wk
+FROM 
+STAGE_ORDERS S,  DIM_LOCATION L
+
+WHERE S.City = L.City
+
+UPDATE    STAGE_ORDERS
+SET      Product_WK  = P.Product_wk
+FROM 
+STAGE_ORDERS S,  DIM_PRODUCT P
+
+WHERE S.ProductID = P.Product_ID
+
+
+UPDATE    STAGE_Orders
+SET      Order_WK  = O.Order_WK
+FROM 
+STAGE_ORDERS S,  DIM_Orders O
+
+WHERE S.OrderID = O.Order_ID
+
+
+/*Table 2*/
+
+USE GroupDW
+GO
+
+UPDATE STAGE_ORDERS
+SET
+    Record_Customer_Exists = 'Y'
+FROM STAGE_ORDERS S, DIM_CUSTOMER C
+WHERE 
+S.CustomerID = C.CustomerID
+
+UPDATE STAGE_ORDERS
+SET
+    Record_Location_Exists = 'Y'
+FROM STAGE_ORDERS S, DIM_LOCATION L
+WHERE 
+S.City = L.City
+
+UPDATE STAGE_ORDERS
+SET
+    Record_Product_Exists = 'Y'
+FROM STAGE_ORDERS S, DIM_PRODUCT P
+WHERE 
+S.ProductID = P.Product_ID
+
+UPDATE STAGE_ORDERS
+SET
+    Record_Orders_Exists = 'Y'
+FROM STAGE_ORDERS S, DIM_Orders O
+WHERE 
+S.OrderID = O.Order_ID
+
+
+
+
+ 
+/* STEP 4 */
+
+
+
+Use GroupDW
+GO
+Insert into FACT_Orders (Order_WK,Order_NK,Customer_WK,
+Order_Date_WK,Ship_Date_WK,Location_WK,Product_WK,
+Sales,Quantity,Discount,Profit,Shipping_Cost,
+Response)
+select Order_WK,OrderID,Customer_WK,Order_Date_WK,
+Ship_Date_WK,Location_WK,Product_WK,Sales,Quantity,
+Discount,Profit,ShippingCost,Response from STAGE_Orders
+
