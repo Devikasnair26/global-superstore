@@ -1,4 +1,4 @@
-# Global Superstore
+# Global Superstore (ETL)
 - The main file uploaded is a text for the sql code.
 
 ## STEP 1: Create Dimension Tables
